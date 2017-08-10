@@ -68,16 +68,12 @@ def onelayer(X, Y, layersize=10):
         batch_loss: The average cross-entropy loss of the batch
     """
 
-    w = tf.Variable(tf.zeros([784, layersize]))
-    b = tf.Variable(tf.zeros([layersize]))
+    w = tf.Variable(tf.zeros([784, 10]))
+    b = tf.Variable(tf.zeros([10]))
     logits = tf.matmul(X, w) + b
     preds = tf.nn.softmax(logits)
-    batch_xentropy = -tf.reduce_sum(Y * tf.log(logits), reduction_indices=[1])
+    batch_xentropy = -tf.reduce_sum(Y * tf.log(preds), reduction_indices=[1])
     batch_loss = tf.reduce_mean(batch_xentropy)
-
-    a = [w, b, logits, preds, batch_xentropy, batch_loss]
-
-
     return w, b, logits, preds, batch_xentropy, batch_loss
 
 def twolayer(X, Y, hiddensize=30, outputsize=10):
