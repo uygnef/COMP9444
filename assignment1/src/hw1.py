@@ -93,6 +93,19 @@ def twolayer(X, Y, hiddensize=30, outputsize=10):
         batch_xentropy: The cross-entropy loss for each image in the batch
         batch_loss: The average cross-entropy loss of the batch
     """
+    w1 = tf.Variable(tf.truncated_normal([int(X.get_shape()[1]), hiddensize], stddev = 0.1))
+    b1 = tf.Variable(tf.constant(0.1, shape = [hiddensize]))
+    y1 = tf.nn.relu(tf.matmul(X, w1) + b1)  # remove softmax
+
+    # layer 2
+    w2 = tf.Variable(tf.truncated_normal([int(y1.get_shape()[1]), outputsize], stddev = 0.1))
+    b2 = tf.Variable(tf.constant(0.1, shape=[outputsize]))
+
+    logits = tf.matmul(y1, w2) + b2
+    preds = tf.nn.softmax(logits)
+
+    batch_xentropy = -tf.reduce_sum(Y * tf.log(preds), reduction_indices=[1])
+    batch_loss = tf.reduce_mean(batch_xentropy)
     return w1, b1, w2, b2, logits, preds, batch_xentropy, batch_loss
 
 def convnet(X, Y, convlayer_sizes=[10, 10], \
