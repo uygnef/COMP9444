@@ -8,7 +8,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 network = "none"
 network = "onelayer"
 network = "twolayer"
-#network = "conv"
+network = "conv"
 
 
 def accuracy(sess, dataset, batch_size, X, Y, accuracy_op):
