@@ -144,21 +144,22 @@ def convnet(X, Y, convlayer_sizes=[10, 10], \
         return tf.Variable(initial)
 
     def conv2d(x, W):
-        return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+        return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding=padding)
 
     def max_pool_2x2(x):
         return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1], padding='SAME')
+                              strides=[1, 2, 2, 1], padding=padding)
 
     W_conv1 = weight_variable([filter_shape + [1] + [outputsize]])
     b_conv1 = bias_variable([outputsize])
-    x_image = tf.reshape(X, [-1, convlayer_sizes[0], convlayer_sizes[1], 1])
+    x_image = tf.reshape(X, [-1, 28, 28, 1])
     conv1 = conv2d(x_image, W_conv1) + b_conv1
     h_conv1 = tf.nn.relu(conv1)
+    h_pool1 = max_pool_2x2(h_conv1)
 
     W_conv2 = weight_variable([filter_shape[0], filter_shape[1], outputsize, outputsize])
     b_conv2 = bias_variable([outputsize])
-    conv2 = conv2d(h_conv1, W_conv2) + b_conv2
+    conv2 = conv2d(h_pool1, W_conv2) + b_conv2
     h_conv2 = tf.nn.relu(conv2)
 
     W_fc1 = weight_variable([7 * 7 * 64, 1024])
