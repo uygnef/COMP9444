@@ -109,7 +109,7 @@ def twolayer(X, Y, hiddensize=30, outputsize=10):
     return w1, b1, w2, b2, logits, preds, batch_xentropy, batch_loss
 
 def convnet(X, Y, convlayer_sizes=[10, 10], \
-        filter_shape=[3, 3], outputsize=10, padding="same"):
+        filter_shape=[3, 3], outputsize=10, padding="SAME"):
     """
     Create a Tensorflow model for a Convolutional Neural Network. The network
     should be of the following structure:
@@ -150,22 +150,24 @@ def convnet(X, Y, convlayer_sizes=[10, 10], \
         return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
                               strides=[1, 2, 2, 1], padding=padding)
 
-    W_conv1 = weight_variable([filter_shape + [1] + [outputsize]])
+    W_conv1 = weight_variable(filter_shape + [1] + [outputsize])
     b_conv1 = bias_variable([outputsize])
     x_image = tf.reshape(X, [-1, 28, 28, 1])
     conv1 = conv2d(x_image, W_conv1) + b_conv1
     h_conv1 = tf.nn.relu(conv1)
     h_pool1 = max_pool_2x2(h_conv1)
 
-    W_conv2 = weight_variable([filter_shape[0], filter_shape[1], outputsize, outputsize])
-    b_conv2 = bias_variable([outputsize])
+    W_conv2 = weight_variable([filter_shape[0], filter_shape[1], outputsize, 64])
+    b_conv2 = bias_variable([64])
     conv2 = conv2d(h_pool1, W_conv2) + b_conv2
     h_conv2 = tf.nn.relu(conv2)
+    h_pool2 = max_pool_2x2(h_conv2)
+
 
     W_fc1 = weight_variable([7 * 7 * 64, 1024])
     b_fc1 = bias_variable([1024])
 
-    h_pool2_flat = tf.reshape(h_conv2, [-1, 7 * 7 * 64])
+    h_pool2_flat = tf.reshape(h_pool2, [-1, 7 * 7 * 64])
     logits = tf.matmul(h_pool2_flat, W_fc1) + b_fc1
     h_fc1 = tf.nn.relu(logits)
 
@@ -173,6 +175,7 @@ def convnet(X, Y, convlayer_sizes=[10, 10], \
     b_fc2 = bias_variable([10])
     y_conv = tf.matmul(h_fc1, W_fc2) + b_fc2
 
+    
     batch_xentropy = -tf.reduce_sum(Y * tf.log(y_conv), reduction_indices=[1])
     batch_loss = tf.reduce_mean(batch_xentropy)
     return conv1, conv2, W_fc2, b_fc2, logits, y_conv, batch_xentropy, batch_loss
