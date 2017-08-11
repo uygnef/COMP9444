@@ -19,6 +19,7 @@ you create.
 
 import tensorflow as tf
 
+
 def input_placeholder():
     """
     This placeholder serves as the input to the model, and will be populated
@@ -32,6 +33,7 @@ def input_placeholder():
     """
     return tf.placeholder(dtype=tf.float32, shape=[None, 784],
                           name="image_input")
+
 
 def target_placeholder():
     """
@@ -49,6 +51,7 @@ def target_placeholder():
     """
     return tf.placeholder(dtype=tf.float32, shape=[None, 10],
                           name="image_target_onehot")
+
 
 def onelayer(X, Y, layersize=10):
     """
@@ -76,6 +79,7 @@ def onelayer(X, Y, layersize=10):
     batch_loss = tf.reduce_mean(batch_xentropy)
     return w, b, logits, preds, batch_xentropy, batch_loss
 
+
 def twolayer(X, Y, hiddensize=30, outputsize=10):
     """
     Create a Tensorflow model for a Neural Network with one hidden layer
@@ -93,12 +97,12 @@ def twolayer(X, Y, hiddensize=30, outputsize=10):
         batch_xentropy: The cross-entropy loss for each image in the batch
         batch_loss: The average cross-entropy loss of the batch
     """
-    w1 = tf.Variable(tf.truncated_normal([int(X.get_shape()[1]), hiddensize], stddev = 0.1))
-    b1 = tf.Variable(tf.constant(0.1, shape = [hiddensize]))
+    w1 = tf.Variable(tf.truncated_normal([int(X.get_shape()[1]), hiddensize], stddev=0.1))
+    b1 = tf.Variable(tf.constant(0.1, shape=[hiddensize]))
     y1 = tf.nn.relu(tf.matmul(X, w1) + b1)
 
     # layer 2
-    w2 = tf.Variable(tf.truncated_normal([int(y1.get_shape()[1]), outputsize], stddev = 0.1))
+    w2 = tf.Variable(tf.truncated_normal([int(y1.get_shape()[1]), outputsize], stddev=0.1))
     b2 = tf.Variable(tf.constant(0.1, shape=[outputsize]))
 
     logits = tf.matmul(y1, w2) + b2
@@ -106,10 +110,12 @@ def twolayer(X, Y, hiddensize=30, outputsize=10):
 
     batch_xentropy = -tf.reduce_sum(Y * tf.log(preds), reduction_indices=[1])
     batch_loss = tf.reduce_mean(batch_xentropy)
+    #batch_loss add 1E-6 to avid "Nan in summary histogram for: w_summaries/histogram", let histogram > 0
     return w1, b1, w2, b2, logits, preds, batch_xentropy, batch_loss
 
+
 def convnet(X, Y, convlayer_sizes=[10, 10], \
-        filter_shape=[3, 3], outputsize=10, padding="SAME"):
+            filter_shape=[3, 3], outputsize=10, padding="same"):
     """
     Create a Tensorflow model for a Convolutional Neural Network. The network
     should be of the following structure:
@@ -134,7 +140,13 @@ def convnet(X, Y, convlayer_sizes=[10, 10], \
     will be from the conv2 layer. If you reshape the conv2 output using tf.reshape,
     you should be able to call onelayer() to get the final layer of your network
     """
+    # use correct panding value
+    if padding == "same":
+        padding = "SAME"
+    else:
+        padding = "VALID"
 
+    # help function to init w and b
     def weight_variable(shape):
         initial = tf.truncated_normal(shape, stddev=0.1)
         return tf.Variable(initial)
@@ -143,6 +155,7 @@ def convnet(X, Y, convlayer_sizes=[10, 10], \
         initial = tf.constant(0.1, shape=shape)
         return tf.Variable(initial)
 
+    # help function to conv and pooling
     def conv2d(x, W):
         return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding=padding)
 
@@ -150,6 +163,7 @@ def convnet(X, Y, convlayer_sizes=[10, 10], \
         return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
                               strides=[1, 2, 2, 1], padding=padding)
 
+    # conv layer1
     W_conv1 = weight_variable(filter_shape + [1] + [outputsize])
     b_conv1 = bias_variable([outputsize])
     x_image = tf.reshape(X, [-1, 28, 28, 1])
@@ -157,28 +171,22 @@ def convnet(X, Y, convlayer_sizes=[10, 10], \
     h_conv1 = tf.nn.relu(conv1)
     h_pool1 = max_pool_2x2(h_conv1)
 
+    # conv_layer 2 with pooling
     W_conv2 = weight_variable([filter_shape[0], filter_shape[1], outputsize, 64])
     b_conv2 = bias_variable([64])
     conv2 = conv2d(h_pool1, W_conv2) + b_conv2
-    h_conv2 = tf.nn.relu(conv2)
-    h_pool2 = max_pool_2x2(h_conv2)
+    h_pool2 = max_pool_2x2(tf.nn.relu(conv2))
 
-
+    # full connect layer with pooling
     W_fc1 = weight_variable([7 * 7 * 64, 1024])
     b_fc1 = bias_variable([1024])
-
     h_pool2_flat = tf.reshape(h_pool2, [-1, 7 * 7 * 64])
     logits = tf.matmul(h_pool2_flat, W_fc1) + b_fc1
     h_fc1 = tf.nn.relu(logits)
 
-    W_fc2 = weight_variable([1024, 10])
-    b_fc2 = bias_variable([10])
-    y_conv = tf.matmul(h_fc1, W_fc2) + b_fc2
-
-    
-    batch_xentropy = -tf.reduce_sum(Y * tf.log(y_conv), reduction_indices=[1])
-    batch_loss = tf.reduce_mean(batch_xentropy)
+    W_fc2, b_fc2, logits, y_conv, batch_xentropy, batch_loss = onelayer(h_fc1, Y)
     return conv1, conv2, W_fc2, b_fc2, logits, y_conv, batch_xentropy, batch_loss
+
 
 def train_step(sess, batch, X, Y, train_op, loss_op, summaries_op):
     """
