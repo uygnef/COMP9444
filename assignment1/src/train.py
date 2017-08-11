@@ -105,9 +105,9 @@ def get_accuracy_op(preds_op, Y):
 
 if __name__ == "__main__":
     # hyperparameters
-    learning_rate = 0.001
+    learning_rate = 0.0005
     batch_size = 128
-    n_training_epochs = 20
+    n_training_epochs = 15
 
     # load data
     mnist = input_data.read_data_sets('data/mnist', one_hot=True)

@@ -185,6 +185,7 @@ def convnet(X, Y, convlayer_sizes=[10, 10], \
     h_fc1 = tf.nn.relu(logits)
 
     W_fc2, b_fc2, logits, y_conv, batch_xentropy, batch_loss = onelayer(h_fc1, Y)
+
     return conv1, conv2, W_fc2, b_fc2, logits, y_conv, batch_xentropy, batch_loss
 
 
