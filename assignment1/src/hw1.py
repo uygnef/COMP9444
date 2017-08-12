@@ -75,7 +75,7 @@ def onelayer(X, Y, layersize=10):
     b = tf.Variable(tf.zeros([layersize]))
     logits = tf.matmul(X, w) + b
     preds = tf.nn.softmax(logits)
-    batch_xentropy = -tf.reduce_sum(Y * tf.log(preds), reduction_indices=[1])
+    batch_xentropy = -tf.reduce_sum(Y * tf.log(tf.clip_by_value(preds, 1e-10,1.0)), reduction_indices=[1])
     batch_loss = tf.reduce_mean(batch_xentropy)
     return w, b, logits, preds, batch_xentropy, batch_loss
 

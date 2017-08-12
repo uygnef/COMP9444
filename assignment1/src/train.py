@@ -9,7 +9,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 #options: "onelayer", "twolayer", "conv"
 network = "none"
 network = "onelayer"
-network = "twolayer"
+#network = "twolayer"
 network = "conv"
 
 
@@ -105,9 +105,9 @@ def get_accuracy_op(preds_op, Y):
 
 if __name__ == "__main__":
     # hyperparameters
-    learning_rate = 0.0005
+    learning_rate = 0.001
     batch_size = 128
-    n_training_epochs = 15
+    n_training_epochs = 20
 
     # load data
     mnist = input_data.read_data_sets('data/mnist', one_hot=True)
