@@ -140,51 +140,17 @@ def convnet(X, Y, convlayer_sizes=[10, 10], \
     will be from the conv2 layer. If you reshape the conv2 output using tf.reshape,
     you should be able to call onelayer() to get the final layer of your network
     """
-    # use correct panding value
-    if padding == "same":
-        padding = "SAME"
-    else:
-        padding = "VALID"
-
-    # help function to init w and b
-    def weight_variable(shape):
-        initial = tf.truncated_normal(shape, stddev=0.1)
-        return tf.Variable(initial)
-
-    def bias_variable(shape):
-        initial = tf.constant(0.1, shape=shape)
-        return tf.Variable(initial)
-
-    # help function to conv and pooling
-    def conv2d(x, W):
-        return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding=padding)
-
-    def max_pool_2x2(x):
-        return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1], padding=padding)
-
     # conv layer1
-    W_conv1 = weight_variable(filter_shape + [1] + [outputsize])
-    b_conv1 = bias_variable([outputsize])
     x_image = tf.reshape(X, [-1, 28, 28, 1])
-    conv1 = conv2d(x_image, W_conv1) + b_conv1
-    h_conv1 = tf.nn.relu(conv1)
-    h_pool1 = max_pool_2x2(h_conv1)
-
+    conv1 =  tf.layers.conv2d(x_image, convlayer_sizes[0], filter_shape, padding=padding, activation=tf.nn.relu)
     # conv_layer 2 with pooling
-    W_conv2 = weight_variable([filter_shape[0], filter_shape[1], outputsize, 64])
-    b_conv2 = bias_variable([64])
-    conv2 = conv2d(h_pool1, W_conv2) + b_conv2
-    h_pool2 = max_pool_2x2(tf.nn.relu(conv2))
+    conv2 =  tf.layers.conv2d(conv1, convlayer_sizes[1], filter_shape, padding=padding, activation=tf.nn.relu)
 
-    # full connect layer with pooling
-    W_fc1 = weight_variable([7 * 7 * 64, 1024])
-    b_fc1 = bias_variable([1024])
-    h_pool2_flat = tf.reshape(h_pool2, [-1, 7 * 7 * 64])
-    logits = tf.matmul(h_pool2_flat, W_fc1) + b_fc1
-    h_fc1 = tf.nn.relu(logits)
+    #dense
+    dense = tf.reshape(conv2, [-1, 28*28*convlayer_sizes[1]])
+    dense = tf.layers.dense(inputs=dense, units=1024, activation=tf.nn.relu)
 
-    W_fc2, b_fc2, logits, y_conv, batch_xentropy, batch_loss = onelayer(h_fc1, Y)
+    W_fc2, b_fc2, logits, y_conv, batch_xentropy, batch_loss = onelayer(dense, Y)
 
     return conv1, conv2, W_fc2, b_fc2, logits, y_conv, batch_xentropy, batch_loss
 
