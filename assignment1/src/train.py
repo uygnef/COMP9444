@@ -4,8 +4,8 @@ import time
 from datetime import datetime
 from tensorflow.examples.tutorials.mnist import input_data
 
-# import os
-# os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 #options: "onelayer", "twolayer", "conv"
 network = "none"
 network = "onelayer"
