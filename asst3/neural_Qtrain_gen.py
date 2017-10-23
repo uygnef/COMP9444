@@ -10,7 +10,7 @@ Hyper Parameters
 """
 GAMMA = 0.9  # discount factor for target Q
 INITIAL_EPSILON = 0.6  # starting value of epsilon
-FINAL_EPSILON = 0.1  # final value of epsilon
+FINAL_EPSILON = 0.01  # final value of epsilon
 EPSILON_DECAY_STEPS = 100
 REPLAY_SIZE = 10000  # experience replay buffer size
 BATCH_SIZE = 128  # size of minibatch
@@ -20,7 +20,7 @@ NUM_EPISODES = 100  # Episode limitation
 EP_MAX_STEPS = 200  # Step limitation in an episode
 # The number of test iters (with epsilon set to 0) to run every TEST_FREQUENCY episodes
 NUM_TEST_EPS = 4
-HIDDEN_NODES = 5
+HIDDEN_NODES = 20
 
 
 def init(env, env_name):
@@ -75,23 +75,28 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # input state. The final layer should be assigned to the variable q_values
     num_hiddenCell = 20
 
-    W1 = tf.Variable(tf.constant(0.01, shape=[state_dim, num_hiddenCell]))
-    b1 = tf.Variable(tf.constant(0.01, shape=[num_hiddenCell]))
+    W1 = tf.Variable(tf.random_normal(shape=[state_dim, num_hiddenCell]))
+    b1 = tf.Variable(tf.random_normal(shape=[num_hiddenCell]))
 
-    W2 = tf.Variable(tf.constant(0.01, shape=[num_hiddenCell, action_dim]))
-    b2 = tf.Variable(tf.constant(0.01, shape=[action_dim]))
+    W2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, num_hiddenCell]))
+    b2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell]))
 
     # hidden layer
-    h_layer = tf.nn.relu(tf.matmul(state_in, W1) + b1)
+    fc1 = tf.nn.relu(tf.matmul(state_in, W1) + b1)
+    fc2 = tf.nn.relu(tf.matmul(fc1, W2) + b1)
     # q value layer
-    q_values = tf.matmul(h_layer, W2) + b2
+
+    W3 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, action_dim]))
+    b3 = tf.Variable(tf.random_normal(shape=[action_dim]))
+
+    q_values = tf.matmul(fc2, W3) + b3
 
     q_selected_action = \
         tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
 
     # TO IMPLEMENT: loss function
     # should only be one line, if target_in is implemented correctly
-    loss = tf.reduce_mean(tf.square(tf.subtract(q_selected_action, target_in)))
+    loss = tf.reduce_mean(tf.square(target_in - q_selected_action))
     optimise_step = tf.train.AdamOptimizer().minimize(loss)
 
     train_loss_summary_op = tf.summary.scalar("TrainingLoss", loss)

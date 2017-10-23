@@ -4,7 +4,7 @@ import glob  # this will be useful when reading reviews from file
 import os
 import tarfile
 
-batch_size = 50
+batch_size = 40
 
 
 def load_data(glove_dict):
@@ -56,15 +56,15 @@ def load_glove_embeddings():
     for i, line in enumerate(raw_data):
         word, array = line.split(" ", 1)
         word_index_dict[word] = i + 1
+        print(len(line.split()[1:]))
         vec_array.append(map(float, line.split()[1:]))
 
     embeddings = np.array(vec_array)
     return embeddings, word_index_dict
-# c = load_glove_embeddings()[1]
-# print(c)
-# a = load_data(c)
-# for i in a:
-#     print(i)
+e, c = load_glove_embeddings()
+print(e)
+a = load_data(c)
+
 
 def define_graph(glove_embeddings_arr):
     """
@@ -82,19 +82,7 @@ def define_graph(glove_embeddings_arr):
 
     return input_data, labels, optimizer, accuracy, loss
 
-def lst_model(bach_size, num_step, lstm_size, words_in_datasets):
-    words = tf.placeholder(tf.float16, (batch_size, num_step))
-    lstm = tf.contrib.rnn.BasicLSTMCell(lstm_size)
-    init_state = state = tf.zeros((bach_size, lstm.state_size))
-    for i in range(num_step):
-        output, state = lstm(words[:, i], state)
 
-    final_state = state
 
-    numpy_state = init_state.eval()
-    total_loss = 0.0
-    for current_batch_of_words in words_in_datasets:
-        numpy_state, current_loss = session.run([final_state, loss],
-                                                # Initialize the LSTM state from the previous iteration.
-                                                feed_dict={initial_state: numpy_state, words: current_batch_of_words})
-        total_loss += current_loss
+
+
