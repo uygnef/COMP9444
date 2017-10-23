@@ -83,7 +83,7 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
 
     # hidden layer
     fc1 = tf.nn.relu(tf.matmul(state_in, W1) + b1)
-    fc2 = tf.nn.relu(tf.matmul(fc1, W2) + b1)
+    fc2 = tf.nn.relu(tf.matmul(fc1, W2) + b2)
     # q value layer
 
     W3 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, action_dim]))
