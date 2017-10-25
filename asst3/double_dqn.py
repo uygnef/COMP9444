@@ -22,6 +22,8 @@ EP_MAX_STEPS = 200  # Step limitation in an episode
 NUM_TEST_EPS = 4
 HIDDEN_NODES = 20
 
+
+
 def init(env, env_name):
     """
     Initialise any globals, e.g. the replay_buffer, epsilon, etc.
@@ -206,6 +208,7 @@ def get_train_batch(q_values, state_in, replay_buffer):
     reflect the equation in the middle of slide 12 of Deep RL 1 Lecture
     notes here: https://webcms3.cse.unsw.edu.au/COMP9444/17s2/resources/12494
     """
+    global t_params, e_params, replace_target_op
     global target_net_work, session
     minibatch = random.sample(replay_buffer, BATCH_SIZE)
 
@@ -214,7 +217,7 @@ def get_train_batch(q_values, state_in, replay_buffer):
     reward_batch = [data[2] for data in minibatch]
     next_state_batch = [data[3] for data in minibatch]
 
-    if random.randint(1, 100) > 80:
+    if random.randint(1, 100) > 90:
         t_params = tf.get_collection('target_net_params')
         e_params = tf.get_collection('eval_net_params')
         replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
