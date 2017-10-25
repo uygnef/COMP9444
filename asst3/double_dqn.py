@@ -65,6 +65,25 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     """
     global target_net_work
 
+    def build_layer(c_name):
+
+        W1 = tf.Variable(tf.random_normal(shape=[state_dim, num_hiddenCell]), collections=c_name)
+        b1 = tf.Variable(tf.random_normal(shape=[1, num_hiddenCell]), collections=c_name)
+        fc1 = tf.nn.relu(tf.matmul(state_in, W1) + b1)
+
+        # value
+        W2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, 1]), collections=c_name)
+        b2 = tf.Variable(tf.random_normal(shape=[1, 1]), collections=c_name)
+        V = tf.matmul(fc1, W2) + b2
+
+        # advantage
+        W2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, action_dim]), collections=c_name)
+        b2 = tf.Variable(tf.random_normal(shape=[1, action_dim]), collections=c_name)
+        A = tf.matmul(fc1, W2) + b2
+
+        out = tf.nn.relu(V + (A - tf.reduce_mean(A, axis=1, keep_dims=True)))
+        return out
+
     state_in = tf.placeholder("float", [None, state_dim])
     action_in = tf.placeholder("float", [None, action_dim])  # one hot
 
@@ -76,16 +95,10 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # input state. The final layer should be assigned to the variable q_values
     num_hiddenCell = 20
 
+
     with tf.variable_scope("eval_net"):
         c_name = ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
-
-        W1 = tf.Variable(tf.random_normal(shape=[state_dim, num_hiddenCell]), collections=c_name)
-        b1 = tf.Variable(tf.random_normal(shape=[num_hiddenCell]), collections=c_name)
-        fc1 = tf.nn.relu(tf.matmul(state_in, W1) + b1)
-
-        W2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, action_dim]), collections=c_name)
-        b2 = tf.Variable(tf.random_normal(shape=[action_dim]), collections=c_name)
-        q_values = tf.nn.relu(tf.matmul(fc1, W2) + b2)
+        q_values = build_layer(c_name)
 
     q_selected_action = \
         tf.reduce_sum(tf.multiply(q_values, action_in), reduction_indices=1)
@@ -97,16 +110,9 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
 
     train_loss_summary_op = tf.summary.scalar("TrainingLoss", loss)
 
-    next_state = tf.placeholder("float", [None, state_dim])
     with tf.variable_scope('target_net'):
         c_name = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
-        W1 = tf.Variable(tf.random_normal(shape=[state_dim, num_hiddenCell]), collections=c_name)
-        b1 = tf.Variable(tf.random_normal(shape=[num_hiddenCell]), collections=c_name)
-        fc1 = tf.nn.relu(tf.matmul(state_in, W1) + b1)
-
-        W2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, action_dim]), collections=c_name)
-        b2 = tf.Variable(tf.random_normal(shape=[action_dim]), collections=c_name)
-        target_net_work = tf.nn.relu(tf.matmul(fc1, W2) + b2)
+        target_net_work = build_layer(c_name)
 
     return state_in, action_in, target_in, q_values, q_selected_action, \
            loss, optimise_step, train_loss_summary_op
@@ -163,7 +169,7 @@ def update_replay_buffer(replay_buffer, state, action, reward, next_state, done,
     replay_buffer.append(cache)
     # Ensure replay_buffer doesn't grow larger than REPLAY_SIZE
     if len(replay_buffer) > REPLAY_SIZE:
-        replay_buffer.pop(0)
+        replay_buffer = sorted(replay_buffer, key=lambda x:x[2])[3*len(replay_buffer)//4:]
     return None
 
 
@@ -208,10 +214,7 @@ def get_train_batch(q_values, state_in, replay_buffer):
     reward_batch = [data[2] for data in minibatch]
     next_state_batch = [data[3] for data in minibatch]
 
-
-
-
-    if random.randint(1, 100) > 90:
+    if random.randint(1, 100) > 80:
         t_params = tf.get_collection('target_net_params')
         e_params = tf.get_collection('eval_net_params')
         replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
@@ -248,7 +251,7 @@ def qtrain(env, state_dim, action_dim,
     # the total_reward across all eps
     batch_presentations_count = total_steps = total_reward = 0
 
-    for episode in range(num_episodes):
+    for episode in range(1000):
         # initialize task
         state = env.reset()
         if render: env.render()
