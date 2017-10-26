@@ -21,7 +21,7 @@ EP_MAX_STEPS = 200  # Step limitation in an episode
 # The number of test iters (with epsilon set to 0) to run every TEST_FREQUENCY episodes
 NUM_TEST_EPS = 4
 HIDDEN_NODES = 20
-
+envir_name = ''
 
 
 def init(env, env_name):
@@ -44,10 +44,10 @@ def init(env, env_name):
     might help in using the same code for discrete and (discretised) continuous
     action spaces
     """
-    global replay_buffer, epsilon
+    global replay_buffer, epsilon, envir_name
     replay_buffer = []
     epsilon = INITIAL_EPSILON
-
+    envir_name = env_name
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
     return state_dim, action_dim
@@ -68,19 +68,18 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     global target_net_work
 
     def build_layer(c_name):
-
-        W1 = tf.Variable(tf.random_normal(shape=[state_dim, num_hiddenCell]), collections=c_name)
-        b1 = tf.Variable(tf.random_normal(shape=[1, num_hiddenCell]), collections=c_name)
+        W1 = tf.Variable(tf.random_normal(shape=[state_dim, num_hiddenCell], seed=1), collections=c_name)
+        b1 = tf.Variable(tf.random_normal(shape=[1, num_hiddenCell], seed=1), collections=c_name)
         fc1 = tf.nn.relu(tf.matmul(state_in, W1) + b1)
 
         # value
-        W2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, 1]), collections=c_name)
-        b2 = tf.Variable(tf.random_normal(shape=[1, 1]), collections=c_name)
+        W2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, 1], seed=1), collections=c_name)
+        b2 = tf.Variable(tf.random_normal(shape=[1, 1], seed=1), collections=c_name)
         V = tf.matmul(fc1, W2) + b2
 
         # advantage
-        W2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, action_dim]), collections=c_name)
-        b2 = tf.Variable(tf.random_normal(shape=[1, action_dim]), collections=c_name)
+        W2 = tf.Variable(tf.random_normal(shape=[num_hiddenCell, action_dim], seed=1), collections=c_name)
+        b2 = tf.Variable(tf.random_normal(shape=[1, action_dim], seed=1), collections=c_name)
         A = tf.matmul(fc1, W2) + b2
 
         out = tf.nn.relu(V + (A - tf.reduce_mean(A, axis=1, keep_dims=True)))
@@ -96,7 +95,6 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     # which are the network's esitmation of the Q values for those actions and the
     # input state. The final layer should be assigned to the variable q_values
     num_hiddenCell = 20
-
 
     with tf.variable_scope("eval_net"):
         c_name = ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
@@ -115,6 +113,11 @@ def get_network(state_dim, action_dim, hidden_nodes=HIDDEN_NODES):
     with tf.variable_scope('target_net'):
         c_name = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
         target_net_work = build_layer(c_name)
+
+    global t_params, e_params, replace_target_op
+    t_params = tf.get_collection('target_net_params')
+    e_params = tf.get_collection('eval_net_params')
+    replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
 
     return state_in, action_in, target_in, q_values, q_selected_action, \
            loss, optimise_step, train_loss_summary_op
@@ -171,7 +174,8 @@ def update_replay_buffer(replay_buffer, state, action, reward, next_state, done,
     replay_buffer.append(cache)
     # Ensure replay_buffer doesn't grow larger than REPLAY_SIZE
     if len(replay_buffer) > REPLAY_SIZE:
-        replay_buffer = sorted(replay_buffer, key=lambda x:x[2])[3*len(replay_buffer)//4:]
+        replay_buffer.pop(0)
+        # replay_buffer = sorted(replay_buffer, key=lambda x:x[2])[3*len(replay_buffer)//4:]
     return None
 
 
@@ -208,7 +212,7 @@ def get_train_batch(q_values, state_in, replay_buffer):
     reflect the equation in the middle of slide 12 of Deep RL 1 Lecture
     notes here: https://webcms3.cse.unsw.edu.au/COMP9444/17s2/resources/12494
     """
-    global t_params, e_params, replace_target_op
+    global t_params, e_params, replace_target_op, total_steps
     global target_net_work, session
     minibatch = random.sample(replay_buffer, BATCH_SIZE)
 
@@ -217,14 +221,8 @@ def get_train_batch(q_values, state_in, replay_buffer):
     reward_batch = [data[2] for data in minibatch]
     next_state_batch = [data[3] for data in minibatch]
 
-    if random.randint(1, 100) > 90:
-        t_params = tf.get_collection('target_net_params')
-        e_params = tf.get_collection('eval_net_params')
-        replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
+    if total_steps < 2000 or total_steps % 100 == 0:
         session.run(replace_target_op)
-        # Q_value_batch = q_values.eval(feed_dict={state_in: next_state_batch})
-        # target_next = target_net_work.eval(feed_dict={state_in: next_state_batch})
-
 
     Q_value_batch = q_values.eval(feed_dict={state_in: next_state_batch})
     # target = q_values.eval(feed_dict={state_in: state_batch})
@@ -249,7 +247,7 @@ def qtrain(env, state_dim, action_dim,
            test_frequency=TEST_FREQUENCY, num_test_eps=NUM_TEST_EPS,
            final_epsilon=FINAL_EPSILON, epsilon_decay_steps=EPSILON_DECAY_STEPS,
            force_test_mode=False, render=True):
-    global epsilon
+    global epsilon, total_steps, envir_name
     # Record the number of times we do a training batch, take a step, and
     # the total_reward across all eps
     batch_presentations_count = total_steps = total_reward = 0
@@ -271,13 +269,16 @@ def qtrain(env, state_dim, action_dim,
 
         ep_reward = 0
         for step in range(ep_max_steps):
-            total_steps += 1
 
             # get an action and take a step in the environment
             action = get_action(state, state_in, q_values, epsilon, test_mode,
                                 action_dim)
             env_action = get_env_action(action)
             next_state, reward, done, _ = env.step(env_action)
+            if envir_name == 'MountainCar-v0':
+                if(abs(next_state[0]) > 0.5):
+                    ep_reward += abs(next_state[0]) * 50
+#                ep_reward += (next_state[0] + abs(next_state[1]))
             ep_reward += reward
 
             # display the updated environment
@@ -290,6 +291,7 @@ def qtrain(env, state_dim, action_dim,
 
             # perform a training step if the replay_buffer has a batch worth of samples
             if (len(replay_buffer) > BATCH_SIZE):
+                total_steps += 1
                 do_train_step(replay_buffer, state_in, action_in, target_in,
                               q_values, q_selected_action, loss, optimise_step,
                               train_loss_summary_op, batch_presentations_count)
@@ -308,7 +310,7 @@ def qtrain(env, state_dim, action_dim,
 
 def setup():
     default_env_name = 'CartPole-v0'
-    # default_env_name = 'MountainCar-v0'
+    default_env_name = 'MountainCar-v0'
     # default_env_name = 'Pendulum-v0'
     # if env_name provided as cmd line arg, then use that
     env_name = sys.argv[1] if len(sys.argv) > 1 else default_env_name
