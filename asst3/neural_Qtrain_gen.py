@@ -53,11 +53,12 @@ def init(env, env_name):
     envir_name = env_name
     state_dim = env.observation_space.shape[0]
 
-    if env_name == 'Pendulum-v0':
+    if type(env.action_space).__name__ == 'Box':
         action_dim = 20
         ACTION_DIM_ = 20
         dis_max = env.action_space.high[0]
         dis_min = env.action_space.low[0]
+        envir_name = 'Pendulum-v0'
     else:
         action_dim = env.action_space.n
 
